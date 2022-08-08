@@ -1,0 +1,1 @@
+// This contract would be the manager of the companies funds (Ethers and wrc20 token)

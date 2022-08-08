@@ -5,10 +5,10 @@ interface Implementation {
     function initialize(address[] memory _owners, uint _numConfirmationsRequired) external;
 }
 
-
+/// @dev this is the contract handling the cloning and storing the address of all the clone wallet
 contract WalletFactory {
     address private admin;
-    address private implementation = 0xD74f98Ef13445c1e2e727f25C60BbaE558658D9B;
+    address private implementation = 0xD74f98Ef13445c1e2e727f25C60BbaE558658D9B; // addres of the implementation contract
 
     // wallet_addr => array_of_owners
     mapping (address => address[]) private wallets;

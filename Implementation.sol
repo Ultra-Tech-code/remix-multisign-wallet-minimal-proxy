@@ -56,7 +56,7 @@ contract MultiSigWallet is Initializable {
     /// @dev this event would be logged when a transaction is terminated
     event RevokeConfirmation(address indexed owner, uint indexed txIndex);
     /// @dev this would be logged when a transaction is finally excuted
-    event ExecuteTransaction(address indexed owner, uint indexed txIndex);
+    event ExecuteTransaction(address indexed owner, uint indexed txIndex, bytes data);
 
 
     //STATE VARIABLES
@@ -131,18 +131,23 @@ contract MultiSigWallet is Initializable {
 
 
 
-    // ["0x5B38Da6a701c568545dCfcB03FcB875f56beddC4","0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db","0x78731D3Ca6b7E34aC0F824c42a7cC18A495cabaB"]
-    
+    /// @dev enabling the contract recieve ether
     receive() external payable {
         emit Deposit(msg.sender, msg.value, address(this).balance);
     }
 
+    /// @dev taking the funds should a function that does not exist be called with funds
     fallback() external payable {}
 
+
+    /// @dev this function would push new transactions to the transactons array 
+    /// @param _to: this is the address that the low level call would be sent to
+    /// @param _value: this is the amount of ether that would be passed to the low level transaction call when the transaction have been excecuted
+    /// @param _data: this is the low level representation of the transaction which would be passed to the .call method to the _to address
     function submitTransaction (
         address _to,
         uint _value,
-        bytes memory _data // 0xdef4532
+        bytes memory _data // this would be a function signature
     ) shouldBeInit public onlyOwner {
         uint txIndex = transactions.length;
 
@@ -159,6 +164,8 @@ contract MultiSigWallet is Initializable {
         emit SubmitTransaction(msg.sender, txIndex, _to, _value, _data);
     }
 
+    /// @dev using this function, a user can consent to a transaction that has been submited
+    /// @param _txIndex: this is the transaction index
     function confirmTransaction(uint _txIndex)
         public
         shouldBeInit
@@ -174,12 +181,16 @@ contract MultiSigWallet is Initializable {
         emit ConfirmTransaction(msg.sender, _txIndex);
     }
 
+    /// @dev here the transaction would be excuted
+    /// @notice the transaction can only be excecuted is the number of quorum is satified!!
+    /// @param _txIndex: this is the index of the transaction that is to be excecuted
     function executeTransaction(uint _txIndex)
         public
         shouldBeInit
         onlyOwner
         txExists(_txIndex)
         notExecuted(_txIndex)
+        returns (bytes memory)
     {
         Transaction storage transaction = transactions[_txIndex];
 
@@ -190,14 +201,18 @@ contract MultiSigWallet is Initializable {
 
         transaction.executed = true;
 
-        (bool success, ) = transaction.to.call{value: transaction.value}(
+        (bool success, bytes memory data) = transaction.to.call{value: transaction.value}(
             transaction.data
         );
         require(success, "tx failed");
 
-        emit ExecuteTransaction(msg.sender, _txIndex);
+        emit ExecuteTransaction(msg.sender, _txIndex, data);
+
+        return data;
     }
 
+    /// @dev using this function, the user can cancel the revoke his/her vote given to a transaction
+    /// @param _txIndex: this is the index of the tranaction to be revoked
     function revokeConfirmation(uint _txIndex)
         public
         shouldBeInit
@@ -215,18 +230,23 @@ contract MultiSigWallet is Initializable {
         emit RevokeConfirmation(msg.sender, _txIndex);
     }
 
+    /// @dev this is a function to return all the owners in a wallet quorum
     function getOwners() public view shouldBeInit returns (address[] memory) {
         return owners;
     }
 
+    /// @dev obtaining the length of the transactions of the wallet
     function getTransactionCount() public view shouldBeInit returns (uint) {
         return transactions.length;
     }
 
+    /// @dev this function would return a transaction on input of the transaction id
+    /// @param _txIndex: this is the id of the transaction to be returned
     function getTransaction(uint _txIndex)
         public
         view
         shouldBeInit
+        onlyOwner
         returns (
             address to,
             uint value,
@@ -246,6 +266,26 @@ contract MultiSigWallet is Initializable {
         );
     }
 
+
+    /// @dev this function is meant for owners to qurey the balance of the contract
+    function getWalletBalance()
+        public
+        view
+        shouldBeInit
+        onlyOwner
+        returns (
+            uint
+        )
+    {
+        return address(this).balance;
+    }
+
+
+    /// @dev this is a function to returns and transaction (How would i implement this, I dont feel conformatable returning an array)
+
+
+
+    /// @dev this is acting as the constructor (because this contract is implemented using the EIP-1167) (this function can only run once and it must be on deployment)
     function initialize(address[] memory _owners, uint _numConfirmationsRequired) public cantInitBase {
 
         // the input owner must be more than zero
@@ -286,10 +326,16 @@ contract MultiSigWallet is Initializable {
 }
 
 
+// ["0x5B38Da6a701c568545dCfcB03FcB875f56beddC4","0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db","0x78731D3Ca6b7E34aC0F824c42a7cC18A495cabaB"]
+    
+
+
 
 // todo
 
 
 /*
-Handle data coming from excute function (handle the data coming from the call method)
+
+
+Functions to return all the tranaction so the frontend guy can make use of the data. or the frontend guy can make use on the event logs?
 */
