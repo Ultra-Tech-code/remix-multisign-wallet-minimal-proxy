@@ -1,4 +1,3 @@
-
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.8;
 
@@ -73,7 +72,7 @@ contract BankToken is Pausable {
         tokenList[msg.sender][_tokenAddress] -= _amount;
         bool transfer_status = IERC20(_tokenAddress).transfer(_to, _amount);
 
-        // question: revert changes the state of a contract to the init tate right? if this transaction fails, the money deducted from the bal, would it be reverted to the init state
+    // question: revert changes the state of a contract to the init tate right? if this transaction fails, the money deducted from the bal, would it be reverted to the init state
 
        require(transfer_status, "Withdraw Error");
        emit _transfer_erc20(_tokenAddress, msg.sender, _to, _amount); 
@@ -86,6 +85,7 @@ contract BankToken is Pausable {
         emit _deposit_ether(msg.sender, msg.value);
     }
 
+    //a recieve function that gets money that is mistakenly sent to the contract
     receive() external payable {
         deposit();
     }
@@ -96,6 +96,40 @@ contract BankToken is Pausable {
         balance[msg.sender] -= _amt;
         payable(_to).transfer(_amt);
         emit _transfer_ether(msg.sender, _to, _amt);
+    }
+
+    // function to get the balance of ether
+    function getBalance() external view returns(uint){
+        return balance[msg.sender];
+    }
+
+    // function to get theh balance of the contract
+    function getWalletBalance() external view returns(uint){
+        return address(this).balance;
+    }
+
+    // function to pause some function in the contract
+    function pausible() external onlyOwner {
+        _pause();
+    }
+
+    // function to unpause some function in the contract
+    function unpausible() external onlyOwner {
+        _unpause();
+    }
+
+    /// @dev this function would be used by admin to withdraw an ERC20 token locked in the contract, providing the token address ans the amount they wish to withdraw
+    function recoverTrappedMoney(address _to, address _tokenAddress, uint _amt) external onlyOwner returns (bool) {
+        require(_to != address(0), "ERC20: transfer to the zero address");
+
+        bool transfer_status = IERC20(_tokenAddress).transfer(_to, _amt);
+
+        if(transfer_status) {
+            emit _recover(_to, _tokenAddress, _amt);
+            return true;
+        }else {
+            return false;
+        }
     }
 
 }
